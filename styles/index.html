@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>India Basemaps</title>
+  
+  <!-- MapLibre GL CSS -->
+  <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+  
+  <!-- Map Style Switcher CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/map-gl-style-switcher@latest/dist/map-gl-style-switcher.css" />
+  
+  <!-- MapLibre GL Geocoder CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/@maplibre/maplibre-gl-geocoder@1.5.0/dist/maplibre-gl-geocoder.css" />
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body, html {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    
+    #map {
+      width: 100%;
+      height: 100vh;
+    }    
+ 
+  </style>
+</head>
+<body>
+  <div id="map"></div> 
+
+  <!-- MapLibre GL JS -->
+  <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+  
+  <!-- Map Style Switcher JS -->
+  <script src="https://unpkg.com/map-gl-style-switcher@latest/dist/index.umd.js"></script>
+  
+  <!-- MapLibre GL Geocoder JS -->
+  <script src="https://unpkg.com/@maplibre/maplibre-gl-geocoder@1.5.0/dist/maplibre-gl-geocoder.min.js"></script>
+  
+  <script>
+    // Get the base path for styles (assuming styles folder is in parent directory)   
+    // Define available map styles
+    const styles = [
+      {
+        id: 'basic',
+        name: 'Basic',
+        image: 'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/voyager.png',
+        styleUrl: 'basic/basic.json',
+        description: 'Basic map style'
+      },
+      
+      {
+        id: 'bright',
+        name: 'Bright',
+        image: 'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/voyager.png',
+        styleUrl: 'bright/bright.json',
+        description: 'Bright style with colorful features'
+      },
+      {
+        id: 'dark',
+        name: 'Dark Matter',
+        image: 'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/dark.png',
+        styleUrl: 'dark/dark.json',
+        description: 'Dark theme for low-light viewing'
+      },
+      {
+        id: 'positron',
+        name: 'Positron',
+        image: 'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/positron.png',
+        styleUrl: 'positron/positron.json',
+        description: 'Light, minimal style'
+      },
+      {
+        id: 'toner',
+        name: 'Toner',
+        image: 'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/dark.png',
+        styleUrl: 'toner/toner.json',
+        description: 'High contrast black and white style'
+      },
+      {
+        id: 'fiord',
+        name: 'Fiord',
+        image: 'https://raw.githubusercontent.com/opengeoshub/vstyles/refs/heads/main/vstyles/omt/fiord/fiord.png',
+        styleUrl: 'fiord/fiord.json',
+        description: 'Cool blue-toned style'
+      },      
+      {
+        id: 'liberty',
+        name: 'Liberty',
+        image: 'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/osm.png',
+        styleUrl: 'liberty/liberty.json',
+        description: 'Liberty style'
+      },
+      {
+        id: 'terrain',
+        name: 'Terrain',
+        image: 'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/arcgis-hybrid.png',
+        styleUrl: 'terrain/terrain.json',
+        description: 'Terrain style with elevation'
+      },
+      {
+        id: '3d',
+        name: '3D',
+        image: 'https://raw.githubusercontent.com/muimsd/map-gl-style-switcher/refs/heads/main/public/osm.png',
+        styleUrl: '3d/3d.json',
+        description: '3D map style with terrain and buildings'
+      }
+    ];
+
+    // Initialize the map with the first style
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: styles[0].styleUrl,
+      center: [78.9629, 20.5937], // Center of India
+      zoom: 0,
+    });
+
+    // map.addControl(new maplibregl.GlobeControl());
+
+    // Wait for the map to load
+    map.on('load', () => {
+      console.log('Map loaded successfully');
+    });
+
+    // Handle map errors
+    map.on('error', (e) => {
+      console.error('Map error:', e);
+    });
+
+    // Initialize the style switcher control
+    const styleSwitcher = new MapGLStyleSwitcher.StyleSwitcherControl({
+      styles: styles,
+      theme: 'auto', // 'light', 'dark', or 'auto'
+      activeStyleId: styles[0].id,
+      onAfterStyleChange: (from, to) => {
+        console.log(`Switching from ${from.name} to ${to.name}`);
+        map.setStyle(to.styleUrl);
+      },
+      onBeforeStyleChange: (from, to) => {
+        console.log(`About to switch from ${from.name} to ${to.name}`);
+      }
+    });
+
+    // Geocoder API using Nominatim
+    // India bounding box: min_lon, min_lat, max_lon, max_lat
+    const indiaBbox = {
+      minLon: 67.67457,
+      minLat: 5.896067,
+      maxLon: 97.41989,
+      maxLat: 35.73091
+    };
+
+    const geocoderApi = {
+      forwardGeocode: async (config) => {
+        const features = [];
+        try {
+          // Limit search to India bounding box using viewbox and bounded parameters
+          const query = encodeURIComponent(config.query);
+          const viewbox = `${indiaBbox.minLon},${indiaBbox.minLat},${indiaBbox.maxLon},${indiaBbox.maxLat}`;
+          const request =
+            `https://nominatim.openstreetmap.org/search?q=${query}&format=geojson&polygon_geojson=1&addressdetails=1&viewbox=${viewbox}&bounded=1`;
+          const response = await fetch(request);
+          const geojson = await response.json();
+          for (const feature of geojson.features) {
+            const center = [
+              feature.bbox[0] +
+                (feature.bbox[2] - feature.bbox[0]) / 2,
+              feature.bbox[1] +
+                (feature.bbox[3] - feature.bbox[1]) / 2
+            ];
+            const point = {
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: center
+              },
+              place_name: feature.properties.display_name,
+              properties: feature.properties,
+              text: feature.properties.display_name,
+              place_type: ['place'],
+              center
+            };
+            features.push(point);
+          }
+        } catch (e) {
+          console.error(`Failed to forwardGeocode with error: ${e}`);
+        }
+
+        return {
+          features
+        };
+      }
+    };
+
+    // Add the geocoder control to the top-left
+    map.addControl(
+      new MaplibreGeocoder(geocoderApi, {
+        maplibregl
+      }),
+      'top-left'
+    );
+
+    // Add the style switcher control to the map
+    map.addControl(styleSwitcher, 'bottom-right');
+    map.addControl(new maplibregl.GlobeControl(),'top-right');
+    // Add navigation controls
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+  </script>
+</body>
+</html>
